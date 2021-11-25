@@ -312,19 +312,21 @@ class LeagueTable:
         conference_standings = {}
         for conference in np.unique(teams_import[['Conference']].values):
             conference_standings[conference] = {}
+            conference_table[conference] = {}
             for rnd in np.unique(results_import[['Round']].values):
                 conference_standings[conference][rnd] = table_rounds[rnd].loc[table_rounds[rnd]['name'].isin(teams_import.loc[teams_import['Conference'] == conference, 'Team'])]
 
-            conference_table[conference] = conference_standings[conference][rnd].to_dict('records')
+                conference_table[conference][rnd] = conference_standings[conference][rnd].to_dict('records')
 
         division_table = {}
         division_standings = {}
         for division in np.unique(teams_import[['Division']].values):
             division_standings[division] = {}
+            division_table[division] = {}
             for rnd in np.unique(results_import[['Round']].values):
                 division_standings[division][rnd] = table_rounds[rnd].loc[table_rounds[rnd]['name'].isin(teams_import.loc[teams_import['Division'] == division, 'Team'])]
 
-            division_table[division] = division_standings[division][rnd].to_dict('records')
+                division_table[division][rnd] = division_standings[division][rnd].to_dict('records')
 
         return final_table, conference_table, division_table
 

@@ -41,13 +41,13 @@ def table(ctx, league, rnd, conference, division):
         teams(i, team)
 
     # Display Conference standings
-    display_table(conf, name=conference)
+    display_table(conf, rnd, name=conference)
 
     # Display Division standings
-    display_table(divi, name=division)
+    display_table(divi, rnd, name=division)
 
 
-def display_table(data, name=None):
+def display_table(data, rnd, name=None):
     # Display Conference standings
     if name is None:
         pass
@@ -55,12 +55,12 @@ def display_table(data, name=None):
         for c in data:
             print(f"League table displayed for: {c}:")
             headers()
-            for i, team in enumerate(data[c]):
+            for i, team in enumerate(data[c][rnd]):
                 teams(i, team)
     else:
         print(f"League table displayed for: {name}:")
         headers()
-        for i, team in enumerate(data[name]):
+        for i, team in enumerate(data[name][rnd]):
             teams(i, team)
 
 
