@@ -75,8 +75,8 @@ class LeagueTable:
         """
 
         # results_import = pd.read_csv('./data/' + league + '.csv')
-        results_import = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\data\\' + league + '/' + league + '.csv')
-        teams_import = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\data\\' + league + '/Teams.csv')
+        results_import = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database\\' + league + '/Results/' + league + '.csv')
+        teams_import = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database\\' + league + '/Teams/Teams.csv')
 
         for t in teams_import.loc[:,'Team']:
             results_import.loc[results_import['Home Team'] == t, 'Home Team Conference'] = \
