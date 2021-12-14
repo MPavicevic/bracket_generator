@@ -1,5 +1,5 @@
 import pandas as pd
-import itertools
+
 
 def create_balanced_round_robin(players, order=1):
     """ Create a schedule for the players in the list and return it"""
@@ -9,13 +9,13 @@ def create_balanced_round_robin(players, order=1):
     # manipulate map (array of indexes for list) instead of list itself
     # this takes advantage of even/odd indexes to determine home vs. away
     n = len(players)
-    map = list(range(n))
+    mapping = list(range(n))
     mid = n // 2
-    for i in range(n-1):
-        l1 = map[:mid]
-        l2 = map[mid:]
+    for i in range(n - 1):
+        l1 = mapping[:mid]
+        l2 = mapping[mid:]
         l2.reverse()
-        round = []
+        rnd = []
         for j in range(mid):
             t1 = players[l1[j]]
             t2 = players[l2[j]]
@@ -24,18 +24,18 @@ def create_balanced_round_robin(players, order=1):
                 # (this is because the first match always involves the last player in the list)
                 # round.append([t2, t1])
                 if order == 1:
-                    round += [str(t2) + ' .vs ' + str(t1)]
+                    rnd += [str(t2) + ' .vs ' + str(t1)]
                 else:
-                    round += [str(t1) + ' .vs ' + str(t2)]
+                    rnd += [str(t1) + ' .vs ' + str(t2)]
             else:
                 # round.append([t1, t2])
                 if order == 1:
-                    round += [str(t1) + ' .vs ' + str(t2)]
+                    rnd += [str(t1) + ' .vs ' + str(t2)]
                 else:
-                    round += [str(t2) + ' .vs ' + str(t1)]
-        s.append(round)
+                    rnd += [str(t2) + ' .vs ' + str(t1)]
+        s.append(rnd)
         # rotate list by n/2, leaving last element at the end
-        map = map[mid:-1] + map[:mid] + map[-1:]
+        mapping = mapping[mid:-1] + mapping[:mid] + mapping[-1:]
     return s
 
 
@@ -51,7 +51,7 @@ def create_balanced_round_robin_2_lists(players1, players2):
     # this takes advantage of even/odd indexes to determine home vs. away
     n = len(players1)
     for i in range(n):
-        round = []
+        rnd = []
         for j in range(n):
             t1 = players1[j]
             t2 = players2[j]
@@ -59,13 +59,13 @@ def create_balanced_round_robin_2_lists(players1, players2):
                 # flip the first match only, every other round
                 # (this is because the first match always involves the last player in the list)
                 # round.append([t2, t1])
-                round += [str(t2) + ' .vs ' + str(t1)]
+                rnd += [str(t2) + ' .vs ' + str(t1)]
             else:
                 # round.append([t1, t2])
-                round += [str(t1) + ' .vs ' + str(t2)]
-        s.append(round)
+                rnd += [str(t1) + ' .vs ' + str(t2)]
+        s.append(rnd)
         # rotate list by n/2, leaving last element at the end
-        players2 = shift(players2,1)
+        players2 = shift(players2, 1)
     return s
 
 
@@ -88,7 +88,7 @@ def get_division_fixtures(divisions, order=1):
     i = 0
     for teams in divisions:
         df2 = df_from_list(teams, order=order)
-        i = i+1
+        i = i + 1
         if i == 1:
             schedule = df2
         else:
@@ -104,7 +104,7 @@ def get_conference_fixtures(conferences, order=1):
             df = pd.DataFrame(create_balanced_round_robin_2_lists(conf[0], conf[1]))
         else:
             df = pd.DataFrame(create_balanced_round_robin_2_lists(conf[1], conf[0]))
-        i = i+1
+        i = i + 1
         if i == 1:
             schedule = df
         else:
@@ -113,7 +113,7 @@ def get_conference_fixtures(conferences, order=1):
 
 
 def create_division_league_fixtures(divisions, conferences, order=1):
-    if order==1:
+    if order == 1:
         ds_1 = get_division_fixtures(divisions=divisions, order=1)
         cs_1 = get_conference_fixtures(conferences, order=1)
         ds_2 = get_division_fixtures(divisions=divisions, order=2)

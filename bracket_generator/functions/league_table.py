@@ -75,18 +75,19 @@ class LeagueTable:
         """
 
         # results_import = pd.read_csv('./data/' + league + '.csv')
-        results_import = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database\\' + league + '/Results/' + league + '.csv')
-        teams_import = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database\\' + league + '/Teams/Teams.csv')
+        results_import = pd.read_csv(
+            'E:\\Projects\\Github\\bracket_generator\\database\\' + league + '/Results.csv')
+        teams_import = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database\\' + league + '/Teams.csv')
 
-        for t in teams_import.loc[:,'Team']:
+        for t in teams_import.loc[:, 'id']:
             results_import.loc[results_import['Home Team'] == t, 'Home Team Conference'] = \
-                list(teams_import.loc[teams_import['Team'] == t, 'Conference'])[0]
+                list(teams_import.loc[teams_import['id'] == t, 'ConferenceId'])[0]
             results_import.loc[results_import['Away Team'] == t, 'Away Team Conference'] = \
-                list(teams_import.loc[teams_import['Team'] == t, 'Conference'])[0]
+                list(teams_import.loc[teams_import['id'] == t, 'ConferenceId'])[0]
             results_import.loc[results_import['Home Team'] == t, 'Home Team Division'] = \
-                list(teams_import.loc[teams_import['Team'] == t, 'Division'])[0]
+                list(teams_import.loc[teams_import['id'] == t, 'DivisionId'])[0]
             results_import.loc[results_import['Away Team'] == t, 'Away Team Division'] = \
-                list(teams_import.loc[teams_import['Team'] == t, 'Division'])[0]
+                list(teams_import.loc[teams_import['id'] == t, 'DivisionId'])[0]
         print(f"Running {league} table generator")
 
         final_table = {}
@@ -206,7 +207,10 @@ class LeagueTable:
                         'L': int(loss_home),
                         'WIN%': "{:.3f}".format(0) if win_home == 0 else "{:.3f}".format(
                             (win_home / (win_home + loss_home))),
-                        'HOME': str(int(win_home)) + '-' + str(int(loss_home)),
+                        'HOME': str(int(int(final_table[rnd][team1]['HOME'].split("-")[0]) +
+                                        match_outcome[team1] / points_win)) + '-' +
+                                str(int(int(final_table[rnd][team1]['HOME'].split("-")[1]) +
+                                        match_outcome[team2] / points_win)),
                         'ROAD': final_table[rnd][team1]['ROAD'],
                         'OT_W': int(ot_win_home),
                         'OT_L': int(ot_loss_home),
@@ -241,7 +245,10 @@ class LeagueTable:
                         'WIN%': "{:.3f}".format(0) if win_away == 0 else "{:.3f}".format(
                             (win_away / (win_away + loss_away))),
                         'HOME': final_table[rnd][team2]['HOME'],
-                        'ROAD': str(int(win_away)) + '-' + str(int(loss_away)),
+                        'ROAD': str(int(int(final_table[rnd][team2]['ROAD'].split("-")[0]) +
+                                        match_outcome[team2] / points_win)) + '-' +
+                                str(int(int(final_table[rnd][team2]['ROAD'].split("-")[1]) +
+                                        match_outcome[team1] / points_win)),
                         'OT_W': int(ot_win_away),
                         'OT_L': int(ot_loss_away),
                         'OT': str(int(ot_win_away)) + '-' + str(int(ot_loss_away)),
@@ -299,7 +306,6 @@ class LeagueTable:
             streak[team].loc[:, 'L_Lst5'] = streak[team].loc[:, 'Losses'].rolling(min_periods=1, window=5).sum()
             streak[team].loc[:, 'LAST 5'] = streak[team].loc[:, 'W_Lst5'].astype(int).astype(str) + '-' + \
                                             streak[team].loc[:, 'L_Lst5'].astype(int).astype(str)
-            # streak[team].loc[:,'STREAK']=streak[team].loc[:,'W']-streak[team].loc[:,'L']
 
         for rnd in np.unique(results_import[['Round']].values):
             for team in np.unique(df[['name']].values):
@@ -310,26 +316,38 @@ class LeagueTable:
 
         conference_table = {}
         conference_standings = {}
-        for conference in np.unique(teams_import[['Conference']].values):
+        for conference in np.unique(teams_import[['ConferenceId']].values):
             conference_standings[conference] = {}
             conference_table[conference] = {}
             for rnd in np.unique(results_import[['Round']].values):
-                conference_standings[conference][rnd] = table_rounds[rnd].loc[table_rounds[rnd]['name'].isin(teams_import.loc[teams_import['Conference'] == conference, 'Team'])]
-
+                conference_standings[conference][rnd] = table_rounds[rnd].loc[
+                    table_rounds[rnd]['name'].isin(teams_import.loc[teams_import['ConferenceId'] == conference, 'id'])]
+                conference_standings[conference][rnd].reset_index(drop=True, inplace=True)
+                conference_standings[conference][rnd].loc[:, 'GB'] = (conference_standings[conference][rnd].at[0, 'W'] -
+                                                                      conference_standings[conference][rnd].loc[1:, 'W'] +
+                                                                      conference_standings[conference][rnd].loc[1:, 'L'] -
+                                                                      conference_standings[conference][rnd].at[0, 'L']) / 2
+                conference_standings[conference][rnd].loc[:, 'GB'] = conference_standings[conference][rnd].loc[:, 'GB'].fillna(0)
                 conference_table[conference][rnd] = conference_standings[conference][rnd].to_dict('records')
 
         division_table = {}
         division_standings = {}
-        for division in np.unique(teams_import[['Division']].values):
+        for division in np.unique(teams_import[['DivisionId']].values):
             division_standings[division] = {}
             division_table[division] = {}
             for rnd in np.unique(results_import[['Round']].values):
-                division_standings[division][rnd] = table_rounds[rnd].loc[table_rounds[rnd]['name'].isin(teams_import.loc[teams_import['Division'] == division, 'Team'])]
-
+                division_standings[division][rnd] = table_rounds[rnd].loc[
+                    table_rounds[rnd]['name'].isin(teams_import.loc[teams_import['DivisionId'] == division, 'id'])]
+                division_standings[division][rnd].reset_index(drop=True, inplace=True)
+                division_standings[division][rnd].loc[:, 'GB'] = (division_standings[division][rnd].at[0, 'W'] -
+                                                                  division_standings[division][rnd].loc[1:, 'W'] +
+                                                                  division_standings[division][rnd].loc[1:, 'L'] -
+                                                                  division_standings[division][rnd].at[0, 'L']) / 2
+                division_standings[division][rnd].loc[:, 'GB'] = division_standings[division][rnd].loc[:, 'GB'].fillna(0)
                 division_table[division][rnd] = division_standings[division][rnd].to_dict('records')
 
         return final_table, conference_table, division_table
 
 
 if __name__ == "__main__":
-    print(LeagueTable.table(LeagueTable, 'Test_League_2021'))
+    print(LeagueTable.table(LeagueTable, 'Test'))
