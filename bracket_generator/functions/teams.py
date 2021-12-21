@@ -196,6 +196,20 @@ def get_player_stats(players_scores):
     return players_stats
 
 
+def assign_assists(df, i, points_col='Points2', assits_col='Assists1'):
+    if ((df.loc[i, points_col] - 2) % 2 == 0) and ((df.loc[i, points_col] - 2) > 0):
+        df.loc[i, assits_col] = (df.loc[i, points_col] - 2) / 2
+    if ((df.loc[i, points_col]) % 3 == 0) and ((df.loc[i, points_col]) > 0):
+        df.loc[i, assits_col] = df.loc[i, assits_col] + (df.loc[i, points_col] - 3) / 3
+    if ((df.loc[i, points_col]) % 5 == 0) and ((df.loc[i, points_col]) > 4) and (df.loc[i, points_col] != 10):
+        df.loc[i, assits_col] = df.loc[i, assits_col] + (df.loc[i, points_col]) / 5
+    if ((df.loc[i, points_col]) % 7 == 0) and ((df.loc[i, points_col]) > 6):
+        df.loc[i, assits_col] = df.loc[i, assits_col] + (df.loc[i, points_col]) / 7 + 2
+    if (df.loc[i, points_col]) % 11 == 0:
+        df.loc[i, assits_col] = df.loc[i, assits_col] + 4
+    return df
+
+
 leagues = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Leagues.csv', index_col=0)
 conferences = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Conferences.csv', index_col=0)
 divisions = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Divisions.csv', index_col=0)
@@ -220,35 +234,69 @@ rb2 = [1, 2, 2, 3, 2, 2, 1, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 4, 2, 3, 3, 3, 3, 2
 as1 = [0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 2, 3, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 3, 2, 2]
 as2 = [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 2, 0, 0, 1, 0, 1, 1]
 
-column_names = ['Roll1', 'Roll2',
-                'FG_Player1', 'Points1', 'FG_Player2', 'Points2',
-                'RB_Player1', 'Rebounds1', 'RB_Player2', 'Rebounds2',
-                'AS_Player1', 'Assists1', 'AS_Player2', 'Assists2']
 
-scoring_lookup = pd.DataFrame(columns=column_names)
-scoring_lookup.loc[:, 'Roll1'] = roll1
-scoring_lookup.loc[:, 'Roll2'] = roll2
-scoring_lookup.loc[:, 'Points1'] = fg1
-scoring_lookup.loc[:, 'Points2'] = fg2
-scoring_lookup.loc[:, 'Rebounds1'] = rb1
-scoring_lookup.loc[:, 'Rebounds2'] = rb2
-scoring_lookup.loc[:, 'Assists1'] = as1
-scoring_lookup.loc[:, 'Assists2'] = as2
-for col in ['FG_Player1', 'RB_Player1', 'AS_Player1']:
-    for c in ['Points1', 'Rebounds1', 'Assists1']:
-        tmp = players.sample(n=36, weights=c, random_state=1, replace=True)
-        tmp.reset_index(inplace=True)
-    for r in tmp.index:
-        draw_p2 = players.drop(players[players['Player'] == tmp.loc[r, 'Player']].index).sample(n=1, weights='Points2')
-        draw_r2 = players.drop(players[players['Player'] == tmp.loc[r, 'Player']].index).sample(n=1,
-                                                                                                weights='Rebounds2')
-        draw_a2 = players.drop(players[players['Player'] == tmp.loc[r, 'Player']].index).sample(n=1, weights='Assists2')
-        scoring_lookup.loc[r, 'FG_Player2'] = draw_p2.iloc[0, 0]
-        scoring_lookup.loc[r, 'RB_Player2'] = draw_r2.iloc[0, 0]
-        scoring_lookup.loc[r, 'AS_Player2'] = draw_a2.iloc[0, 0]
+def assign_random_lookup_stats(off_rbs, def_rbs):
+    df = pd.DataFrame(
+        {'roll1': roll1, 'roll2': roll2, 'Points1': 0, 'Points2': 0, 'Rebounds1': 0, 'Rebounds2': 0, 'Assists1': 0,
+         'Assists2': 0})
+    for i in range(0, 36):
+        fgs = randNums(2, 0, 12, df.loc[i, :].sum())
+        df.loc[i, 'Points1'] = min(fgs[0], fgs[1])
+        df.loc[i, 'Points2'] = max(fgs[0], fgs[1])
+        df = assign_assists(df, i, points_col='Points2', assits_col='Assists1')
+        df = assign_assists(df, i, points_col='Points1', assits_col='Assists2')
+    k = 0
+    rbs_11 = randNums(6, 5, 10, off_rbs)
+    rbs_22 = randNums(6, 10, 20, def_rbs)
+    for i in range(0, 6):
+        rbs_1 = randNums(6, 0, 3, rbs_11[i])
+        rbs_2 = randNums(6, 1, 4, rbs_22[i])
+        for j in range(0, 6):
+            df.loc[k, 'Rebounds1'] = min(rbs_1[j], rbs_1[j])
+            df.loc[k, 'Rebounds2'] = max(rbs_2[j], rbs_2[j])
+            k = k + 1
+    return df.astype(int)
 
-    scoring_lookup.loc[:, col] = tmp.loc[:, 'Player']
 
+def get_scoring_lookup(lookup_stats, players):
+    column_names = ['Roll1', 'Roll2',
+                    'FG_Player1', 'Points1', 'FG_Player2', 'Points2',
+                    'RB_Player1', 'Rebounds1', 'RB_Player2', 'Rebounds2',
+                    'AS_Player1', 'Assists1', 'AS_Player2', 'Assists2']
+    scoring_lookup = pd.DataFrame(columns=column_names)
+    scoring_lookup.loc[:, 'Roll1'] = roll1
+    scoring_lookup.loc[:, 'Roll2'] = roll2
+    scoring_lookup.loc[:, 'Points1'] = lookup_stats.loc[:, 'Points1']
+    scoring_lookup.loc[:, 'Points2'] = lookup_stats.loc[:, 'Points2']
+    scoring_lookup.loc[:, 'Rebounds1'] = lookup_stats.loc[:, 'Rebounds1']
+    scoring_lookup.loc[:, 'Rebounds2'] = lookup_stats.loc[:, 'Rebounds2']
+    scoring_lookup.loc[:, 'Assists1'] = lookup_stats.loc[:, 'Assists1']
+    scoring_lookup.loc[:, 'Assists2'] = lookup_stats.loc[:, 'Assists2']
+    for col in ['FG_Player1', 'RB_Player1', 'AS_Player1']:
+        for c in ['Points1', 'Rebounds1', 'Assists1']:
+            tmp = players.sample(n=36, weights=c, random_state=1, replace=True)
+            tmp.reset_index(inplace=True)
+        for r in tmp.index:
+            draw_p2 = players.drop(players[players['Player'] == tmp.loc[r, 'Player']].index).sample(n=1,
+                                                                                                    weights='Points2')
+            draw_r2 = players.drop(players[players['Player'] == tmp.loc[r, 'Player']].index).sample(n=1,
+                                                                                                    weights='Rebounds2')
+            draw_a2 = players.drop(players[players['Player'] == tmp.loc[r, 'Player']].index).sample(n=1,
+                                                                                                    weights='Assists2')
+            scoring_lookup.loc[r, 'FG_Player2'] = draw_p2.iloc[0, 0]
+            scoring_lookup.loc[r, 'RB_Player2'] = draw_r2.iloc[0, 0]
+            scoring_lookup.loc[r, 'AS_Player2'] = draw_a2.iloc[0, 0]
+
+        scoring_lookup.loc[:, col] = tmp.loc[:, 'Player']
+    return scoring_lookup
+
+
+a = {}
+scoring_lookup = {}
+for i in teams.index:
+    a[i] = assign_random_lookup_stats(off_rbs=40 + round(teams.loc[i, 'offense'] / 4),
+                                      def_rbs=80 - round(teams.loc[i, 'defence'] / 2))
+    scoring_lookup[i] = get_scoring_lookup(a[i], players)
 
 path = 'E:\\Projects\\Github\\bracket_generator\\database/Test/Rolls/'
 all_files = {}
@@ -303,12 +351,14 @@ for i in schedule.index:
             players_detailed_statistics[res[0][1]] = {}
 
         home_scores = \
-            get_players_scores(scoring_lookup,
-                               tuple(detailed_results[i][int(j)][str(res[0])][res[0][0]].loc[:,['Roll1','Roll2']].itertuples(index=False, name=None)),
+            get_players_scores(scoring_lookup[res[0][0]],
+                               tuple(detailed_results[i][int(j)][str(res[0])][res[0][0]].loc[:,
+                                     ['Roll1', 'Roll2']].itertuples(index=False, name=None)),
                                modifier=list(detailed_results[i][int(j)][str(res[0])][res[0][0]]['Modifier']))
         away_scores = \
-            get_players_scores(scoring_lookup,
-                               tuple(detailed_results[i][int(j)][str(res[0])][res[0][1]].loc[:,['Roll1','Roll2']].itertuples(index=False, name=None)),
+            get_players_scores(scoring_lookup[res[0][1]],
+                               tuple(detailed_results[i][int(j)][str(res[0])][res[0][1]].loc[:,
+                                     ['Roll1', 'Roll2']].itertuples(index=False, name=None)),
                                modifier=list(detailed_results[i][int(j)][str(res[0])][res[0][1]]['Modifier']))
         players_detailed_statistics[res[0][0]][i] = get_player_stats(home_scores)
         players_detailed_statistics[res[0][1]][i] = get_player_stats(away_scores)
@@ -326,6 +376,9 @@ results[['Home F/T Points', 'Away F/T Points', 'Home H/T Points', 'Away H/T Poin
 
 results.to_csv('E:\\Projects\\Github\\bracket_generator\\database\\Test/Results.csv', index=False)
 
+for i in teams.index:
+    tmp = players_statistics[i].sum()
+    print('Team ' + i + ' AS: ' + str(round(tmp['AS']/11, 1)) + ' RB_OFF: ' + str(round(tmp['RB_OFF']/11,1)) + ' RB_DEF: ' + str(round(tmp['RB_DEF']/11,1)))
 
 # # Define the cursor
 # mycursor = db.cursor()
