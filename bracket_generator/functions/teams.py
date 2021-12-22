@@ -2,24 +2,13 @@ import glob
 import numpy as np
 import pandas as pd
 import random
-import mysql.connector
-import datetime as datetime
-import math
 import os
 import sys
-from drs import drs
 
 sys.path.append(os.path.abspath('..'))
 
-# user = input("Username: ")
-# password = input("Password: ")
-#
-# db = mysql.connector.connect(
-#     host="localhost",
-#     user=user,
-#     passwd=password,
-#     database="testdatabase"
-# )
+roll1 = [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6]
+roll2 = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6]
 
 LTI = {"Legendary": [0, 2, 2, 4, 4, 6, 6],
        "Excellent": [0, 0, 2, 2, 4, 4, 6],
@@ -35,7 +24,7 @@ LTI_df = pd.DataFrame.from_dict(LTI, orient="index",
 
 
 def rnd_rslt():
-    return (random.randint(1, 6), random.randint(1, 6))
+    return random.randint(1, 6), random.randint(1, 6)
 
 
 def team_rolls():
@@ -153,12 +142,12 @@ def get_players_scores(scoring_lookup, rolls, modifier=None):
 
 def get_player_stats(players_scores, players):
     players_stats = pd.DataFrame(0, index=players.loc[:, 'Player'],
-                                 columns=['FG', 'FGA', 'ORB', 'DRB', 'AST'])
+                                 columns=['PTS', 'FGA', 'ORB', 'DRB', 'AST'])
     for i in players_scores.index:
-        players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'FG'] = \
-            players_scores.loc[i, 'Points1'] + players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'FG']
-        players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'FG'] = \
-            players_scores.loc[i, 'Points2'] + players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'FG']
+        players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS'] = \
+            players_scores.loc[i, 'Points1'] + players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS']
+        players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'PTS'] = \
+            players_scores.loc[i, 'Points2'] + players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'PTS']
         players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'FGA'] = \
             players_scores.loc[i, 'FGA1'] + players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'FGA']
         players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'FGA'] = \
@@ -172,31 +161,31 @@ def get_player_stats(players_scores, players):
         players_stats.loc[players_scores.loc[i, 'AS_Player2'], 'AST'] = \
             players_scores.loc[i, 'Assists2'] + players_stats.loc[players_scores.loc[i, 'AS_Player2'], 'AST']
         if (players_scores.loc[i, 'MOD'] == 1) or (players_scores.loc[i, 'MOD'] == 2):
-            players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'FG'] = \
-                players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'FG'] + players_scores.loc[i, 'MOD']
+            players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS'] = \
+                players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS'] + players_scores.loc[i, 'MOD']
         elif players_scores.loc[i, 'MOD'] == 3:
-            players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'FG'] = \
-                players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'FG'] + 2
-            players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'FG'] = \
-                players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'FG'] + 1
+            players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS'] = \
+                players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS'] + 2
+            players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'PTS'] = \
+                players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'PTS'] + 1
         elif players_scores.loc[i, 'MOD'] == 4:
-            players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'FG'] = \
-                players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'FG'] + 2
-            players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'FG'] = \
-                players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'FG'] + 2
+            players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS'] = \
+                players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS'] + 2
+            players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'PTS'] = \
+                players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'PTS'] + 2
         elif (players_scores.loc[i, 'MOD'] == -1) or (players_scores.loc[i, 'MOD'] == -2):
-            players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'FG'] = \
-                players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'FG'] + players_scores.loc[i, 'MOD']
+            players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'PTS'] = \
+                players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'PTS'] + players_scores.loc[i, 'MOD']
         elif players_scores.loc[i, 'MOD'] == -3:
-            players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'FG'] = \
-                players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'FG'] - 2
-            players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'FG'] = \
-                players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'FG'] - 1
+            players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'PTS'] = \
+                players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'PTS'] - 2
+            players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS'] = \
+                players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS'] - 1
         elif players_scores.loc[i, 'MOD'] == -4:
-            players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'FG'] = \
-                players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'FG'] - 2
-            players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'FG'] = \
-                players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'FG'] - 2
+            players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'PTS'] = \
+                players_stats.loc[players_scores.loc[i, 'FG_Player2'], 'PTS'] - 2
+            players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS'] = \
+                players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS'] - 2
     return players_stats
 
 
@@ -209,39 +198,16 @@ def assign_assists(df, i, points_col='Points2', assits_col='Assists1'):
         df.loc[i, assits_col] = df.loc[i, assits_col] + (df.loc[i, points_col]) / 5
     if ((df.loc[i, points_col]) % 7 == 0) and ((df.loc[i, points_col]) > 6):
         df.loc[i, assits_col] = df.loc[i, assits_col] + (df.loc[i, points_col]) / 7 + 2
-    if (df.loc[i, points_col]) % 11 == 0:
+    if ((df.loc[i, points_col]) % 11 == 0) and ((df.loc[i, points_col]) > 9):
         df.loc[i, assits_col] = df.loc[i, assits_col] + 4
     return df
 
 
-leagues = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Leagues.csv', index_col=0)
-conferences = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Conferences.csv', index_col=0)
-divisions = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Divisions.csv', index_col=0)
-teams = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Teams.csv', index_col=0)
-schedule = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Schedule.csv', index_col=0)
-
-# players = pd.DataFrame({'Player': ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10'],
-#                         'Position': ['C', 'G', 'G', 'F', 'F', 'C', 'G', 'G', 'F', 'F'],
-#                         'Points1': [9, 7, 3, 5, 2, 3, 2, 1, 1, 1],
-#                         'Points2': [11, 7, 4, 2, 3, 2, 2, 1, 2, 2],
-#                         'Rebounds1': [9, 3, 4, 2, 2, 4, 1, 1, 1, 1],
-#                         'Rebounds2': [10, 3, 6, 3, 3, 5, 2, 1, 1, 2],
-#                         'Assists1': [10, 7, 1, 2, 1, 1, 9, 1, 1, 0],
-#                         'Assists2': [1, 2, 0, 2, 1, 3, 3, 1, 0, 0]})
-
-players_df = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Players.csv')
-players = {}
-for i in teams.index:
-    players[i] = players_df.loc[players_df['Team'] == i]
-
-roll1 = [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6]
-roll2 = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6]
-fg1 = [0, 1, 0, 2, 4, 2, 1, 2, 1, 4, 3, 4, 2, 3, 2, 4, 3, 5, 3, 3, 3, 5, 3, 5, 2, 1, 4, 4, 4, 5, 4, 3, 4, 4, 5, 5]
-fg2 = [2, 2, 4, 3, 2, 5, 2, 2, 4, 2, 4, 4, 2, 2, 4, 3, 5, 4, 2, 3, 4, 3, 6, 5, 4, 6, 4, 5, 6, 6, 3, 5, 5, 6, 6, 7]
-rb1 = [1, 1, 1, 1, 1, 0, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 2, 1, 0, 1, 0, 1, 2, 2, 0, 0, 3, 2, 1, 2, 0, 1, 0, 3, 0, 2]
-rb2 = [1, 2, 2, 3, 2, 2, 1, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 4, 2, 3, 3, 3, 3, 2, 3, 2, 2, 2, 2, 4, 3, 3, 3, 3, 3]
-as1 = [0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 2, 3, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 3, 2, 2]
-as2 = [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 2, 0, 0, 1, 0, 1, 1]
+def assign_players(players_df, teams):
+    players = {}
+    for i in teams.index:
+        players[i] = players_df.loc[players_df['Team'] == i]
+    return players
 
 
 def assign_random_lookup_stats(off_rbs, def_rbs, fga1, fga2):
@@ -315,36 +281,51 @@ def get_scoring_lookup(lookup_stats, players):
     return scoring_lookup
 
 
-def assign_positions(detailed_stats, players, team):
-    for p in detailed_stats.index:
-        detailed_stats.loc[p, 'Position'] = players[team].loc[players[team]['Player'] == p, ['Position']]
-    return detailed_stats
+def assign_scoring_lookup(teams, players):
+    a = {}
+    df = {}
+    for i in teams.index:
+        a[i] = assign_random_lookup_stats(off_rbs=40 + round(teams.loc[i, 'offense'] / 4),
+                                          def_rbs=80 - round(teams.loc[i, 'defence'] / 2),
+                                          fga1=50 - round(teams.loc[i, 'offense'] / 4),
+                                          fga2=20 - round(teams.loc[i, 'offense'] / 5))
+        df[i] = get_scoring_lookup(a[i], players[i])
+    return df
 
-a = {}
-scoring_lookup = {}
-for i in teams.index:
-    a[i] = assign_random_lookup_stats(off_rbs=40 + round(teams.loc[i, 'offense'] / 4),
-                                      def_rbs=80 - round(teams.loc[i, 'defence'] / 2),
-                                      fga1=50 - round(teams.loc[i, 'offense'] / 4),
-                                      fga2=20 - round(teams.loc[i, 'offense'] / 5))
-    scoring_lookup[i] = get_scoring_lookup(a[i], players[i])
 
-path = 'E:\\Projects\\Github\\bracket_generator\\database/Test/Rolls/'
-all_files = {}
-rolls = {}
-for i in range(12):
-    all_files[i] = glob.glob(path + 'Round_' + str(i) + '/' + "*.csv")
-    rolls[i] = {}
-    for j in range(4):
-        name = all_files[i][j]
-        name = name.replace(path + 'Round_' + str(i) + '\\', '').replace(".csv", '')
-        tmp = pd.read_csv(all_files[i][j])
-        tms = name.split(' .vs ')
-        rolls[i][name] = {}
-        rolls[i][name][tms[0]] = tmp.loc[:, ['HomeRoll1', 'HomeRoll2']]
-        rolls[i][name][tms[1]] = tmp.loc[:, ['AwayRoll1', 'AwayRoll2']]
+def load_team_rolls(path):
+    # path = 'E:\\Projects\\Github\\bracket_generator\\database/Test/Rolls/'
+    all_files = {}
+    rolls = {}
+    for i in range(12):
+        all_files[i] = glob.glob(path + 'Round_' + str(i) + '/' + "*.csv")
+        rolls[i] = {}
+        for j in range(4):
+            name = all_files[i][j]
+            name = name.replace(path + 'Round_' + str(i) + '\\', '').replace(".csv", '')
+            tmp = pd.read_csv(all_files[i][j])
+            tms = name.split(' .vs ')
+            rolls[i][name] = {}
+            rolls[i][name][tms[0]] = tmp.loc[:, ['HomeRoll1', 'HomeRoll2']]
+            rolls[i][name][tms[1]] = tmp.loc[:, ['AwayRoll1', 'AwayRoll2']]
+    return rolls
 
-import_results = True
+
+## Load data
+leagues = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Leagues.csv', index_col=0)
+conferences = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Conferences.csv', index_col=0)
+divisions = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Divisions.csv', index_col=0)
+teams = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Teams.csv', index_col=0)
+schedule = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Schedule.csv', index_col=0)
+players_df = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Players.csv')
+rolls = load_team_rolls('E:\\Projects\\Github\\bracket_generator\\database/Test/Rolls/')
+# Process data
+players = assign_players(players_df, teams)
+scoring_lookup = assign_scoring_lookup(teams, players)
+
+
+#TODO: Make a function
+import_results = False
 matches = {}
 detailed_results = {}
 headers = ['Round', 'Home Team', 'Away Team', 'Home F/T Points', 'Away F/T Points', 'Home H/T Points',
@@ -394,9 +375,12 @@ for i in schedule.index:
         players_detailed_statistics[res[0][0]][i] = get_player_stats(home_scores, players[res[0][0]])
         players_detailed_statistics[res[0][1]][i] = get_player_stats(away_scores, players[res[0][1]])
 
+results[['Home F/T Points', 'Away F/T Points', 'Home H/T Points', 'Away H/T Points']] = results[
+    ['Home F/T Points', 'Away F/T Points', 'Home H/T Points', 'Away H/T Points']].astype(int)
 
+#TODO: Make a function
 players_statistics = {}
-cols = ['Position', 'FG', 'FGA', 'FG%', 'ORB', 'DRB', 'TRB', 'AST','PTS/G','TRB/G','AST/G']
+cols = ['Position', 'PTS', 'FGA', 'FG%', 'ORB', 'DRB', 'TRB', 'AST','PTS/G','TRB/G','AST/G']
 for i in players_detailed_statistics:
     for j in players_detailed_statistics[i]:
         if j == 0:
@@ -406,8 +390,8 @@ for i in players_detailed_statistics:
         for k in players_detailed_statistics[i][j].index:
             players_statistics[i].loc[k,'Position'] = players[i].loc[players[i]['Player'] == k, 'Position'].values
     players_statistics[i].loc[:, 'TRB'] = players_statistics[i].loc[:, 'ORB'] + players_statistics[i].loc[:, 'DRB']
-    players_statistics[i].loc[:, 'FG%'] = players_statistics[i].loc[:, 'FG'] / 2 / players_statistics[i].loc[:, 'FGA']
-    players_statistics[i].loc[:, 'PTS/G'] = players_statistics[i].loc[:, 'FG'] / (j+1)
+    players_statistics[i].loc[:, 'FG%'] = players_statistics[i].loc[:, 'PTS'] / 2 / players_statistics[i].loc[:, 'FGA']
+    players_statistics[i].loc[:, 'PTS/G'] = players_statistics[i].loc[:, 'PTS'] / (j+1)
     players_statistics[i].loc[:, 'TRB/G'] = players_statistics[i].loc[:, 'TRB'] / (j + 1)
     players_statistics[i].loc[:, 'AST/G'] = players_statistics[i].loc[:, 'AST'] / (j + 1)
 
@@ -417,169 +401,16 @@ for i in players_detailed_statistics:
     for c in ['PTS/G', 'TRB/G', 'AST/G']:
         players_statistics[i][c] = players_statistics[i][c].apply(lambda x: round(x, decimals))
 
+#TODO: Make a function
 players_standings = pd.concat(players_statistics, axis=0)
-players_standings = players_standings.sort_values(by=['FG', 'FG%', 'TRB', 'AST'], ascending=False)
+players_standings = players_standings.sort_values(by=['PTS', 'FG%', 'TRB', 'AST'], ascending=False)
 
-results[['Home F/T Points', 'Away F/T Points', 'Home H/T Points', 'Away H/T Points']] = results[
-    ['Home F/T Points', 'Away F/T Points', 'Home H/T Points', 'Away H/T Points']].astype(int)
 
+#TODO: Make a function
 results.to_csv('E:\\Projects\\Github\\bracket_generator\\database\\Test/Results.csv', index=False)
 
+#TODO: Check if this test is needed
 for i in teams.index:
     tmp = players_statistics[i].sum()
     print('Team ' + i + ' AS: ' + str(round(tmp['AST'] / 11, 1)) + ' RB_OFF: ' + str(
         round(tmp['ORB'] / 11, 1)) + ' RB_DEF: ' + str(round(tmp['DRB'] / 11, 1)))
-
-# # Define the cursor
-# mycursor = db.cursor()
-#
-# mycursor.execute("DROP TABLE IF EXISTS Player")
-# mycursor.execute("DROP TABLE IF EXISTS Results")
-# mycursor.execute("DROP TABLE IF EXISTS Game")
-# mycursor.execute("DROP TABLE IF EXISTS Team")
-# mycursor.execute("DROP TABLE IF EXISTS Division")
-# mycursor.execute("DROP TABLE IF EXISTS Conference")
-# mycursor.execute("DROP TABLE IF EXISTS League")
-#
-# Q_League = "create table League (id varchar(4) primary key, name varchar(50))"
-#
-# Q_Conference = "create table Conference (id varchar(4) primary key, name varchar(50), LeagueId varchar(4)," \
-#                "foreign key (LeagueId) references League(id))"
-#
-# Q_Division = "create table Division (id varchar(4) primary key, name varchar(50)," \
-#              "LeagueId varchar(4), ConferenceId varchar(4)," \
-#              "foreign key (LeagueId) references League(id)," \
-#              "foreign key (ConferenceId) references Conference(id))"
-#
-# Q_Team = "create table Team (id varchar(3) primary key, name VARCHAR(50), offense tinyint, defense tinyint, " \
-#          "LeagueId varchar(4), ConferenceId varchar(4), DivisionId varchar(4)," \
-#          "foreign key (LeagueId) references League(id)," \
-#          "foreign key (ConferenceId) references Conference(id)," \
-#          "foreign key (DivisionId) references Division(id))"
-#
-# # TODO check if these are correct
-# Q_Rolls = "create table Rolls (id int primary key auto_increment, TeamId varchar(3), " \
-#           "Roll1 tinyint, Roll2 tinyint, Modifier tinyint, PointsScored tinyint, Score smallint, " \
-#           "foreign key (TeamId) references Team(id))"
-#
-# Q_Results = "create table Results (gameId int primary key auto_increment, HomeTeamId varchar(3), AwayTeamId varchar(3)," \
-#             "foreign key (HomeTeamId) references Team(id), " \
-#             "foreign key (AwayTeamId) references Team(id), " \
-#             "home_score_ft int default 0, away_score_ft int default 0)"
-#
-# Q_Player = "create table Player (playerId varchar(6) primary key, name varchar(50), TeamId varchar(3)," \
-#            "foreign key (TeamId) references Team(id))"
-#
-# mycursor.execute(Q_League)
-# mycursor.execute(Q_Conference)
-# mycursor.execute(Q_Division)
-# mycursor.execute(Q_Team)
-# mycursor.execute(Q_Rolls)
-# mycursor.execute(Q_Results)
-# mycursor.execute(Q_Player)
-#
-# # Insert many values at once
-# mycursor.executemany("insert into League (id, name) values (%s,%s)", leagues)
-# db.commit()
-# mycursor.executemany("insert into Conference (id, name, LeagueId) values (%s,%s,%s)", conferences)
-# db.commit()
-# mycursor.executemany("insert into Division (id, name, LeagueId, ConferenceId) values (%s,%s,%s,%s)", divisions)
-# db.commit()
-# mycursor.executemany(
-#     "insert into Team (id, name, offense, defense, LeagueId, ConferenceId, DivisionId) values (%s,%s,%s,%s,%s,%s,%s)",
-#     teams)
-# db.commit()
-# mycursor.executemany("insert into Game ()")
-# mycursor.executemany("insert into Results (HomeTeamId, AwayTeamId, home_score_ft, away_score_ft) values (%s,%s,%s,%s)",
-#                      match_results)
-# db.commit()
-# mycursor.executemany("insert into Player (playerId, name, TeamId) values (%s,%s,%s)", players)
-# db.commit()
-
-# mycursor.execute('describe Team')
-# for x in mycursor:
-#     print(x)
-# # # Drop table
-# mycursor.execute("DROP TABLE Player")
-# mycursor.execute("DROP TABLE Results")
-# mycursor.execute("DROP TABLE Team")
-
-# # Create table
-# mycursor.execute("CREATE TABLE Team (name VARCHAR(100), offence tinyint, defence tinyint,"
-#                  "division VARCHAR(100), conference VARCHAR(100), league VARCHAR(100), "
-#                  "teamID int PRIMARY KEY AUTO_INCREMENT)")
-
-# # Alter the table by adding column
-# mycursor.execute("alter table Test add column food varchar(50) not null")
-
-# # Alter the table by dropping column
-# mycursor.execute("alter table Test drop food")
-
-# # Alter the table by changing the column name
-# mycursor.execute("alter table Test change name first_name varchar(50)")
-#
-# # Describe the table
-# mycursor.execute("describe Test")
-# for x in mycursor:
-#     print(x)
-
-## Insert values into the table
-# mycursor.execute("INSERT INTO Team (name, offence, defence, division, conference, league) VALUES (%s,%s,%s,%s,%s,%s)",
-#                  ("TestTeam1", 12, -10, "Div1", "Cnf1", "Lgu1"))
-# db.commit()
-
-# mycursor.execute("CREATE TABLE Test (name varchar(50) not null, created datetime not null, gender enum('M', 'F', 'O'), id int primary key not null auto_increment)")
-# mycursor.execute("insert into Test (name, created, gender) values (%s,%s,%s)", ("Joana", '2020-07-12', "F"))
-# db.commit()
-
-# Select data by specific column names
-# * selects all columns
-# where tells us the condition
-# order by orders the data ascending or descending
-# mycursor.execute("select * from Test where gender = 'M' order by id desc")
-# mycursor.execute("select id, name from Test where gender = 'M' order by id desc")
-#
-#
-#
-# for x in mycursor:
-#     print(x)
-
-# # Insert many values at once
-# mycursor.executemany("insert into Team (name, offense, defense, division, conference, league) values (%s,%s,%s,%s,%s,%s)", teams)
-
-# class Team:
-#     def __init__(self, name, offence, defence, division=None, conference=None, league=None):
-#         self.name = name
-#         self.offence = offence
-#         self.defence = defence
-#         self.division = division
-#         self.conference = conference
-#         self.league = league
-#         self.W = self.L = self.pts = self.pa = 0
-#
-#     def game_result(self, pts, pa):
-#         self.pts.append(pts)
-#         self.pa.append(pa)
-#
-#
-# league_size = 4
-# team_names = ['A', 'B', 'C']
-# teams = []
-# for _ in team_names:
-#     teams.append(Team(str(_),
-#                       int(input('Team ' + str(_) + "'s offence level: ")),
-#                       int(input('Team ' + str(_) + "'s defence level: ")),
-#                       input('Team ' + str(_) + 's division :')))
-#
-# matches = {'AB': [100, 91],
-#            'BC': [85, 92],
-#            'CA': [90, 67]}
-#
-# # for match in matches:
-#
-#
-#
-#
-# for team in teams:
-#     print(team.name, team.offence, team.defence, team.division, team.conference)
-#
