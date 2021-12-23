@@ -6,15 +6,15 @@ import os
 league_name = 'Test1'
 
 # Define divisions
-# divisionA = ["A1", "A2", 'A3', 'A4']
-# divisionB = ["B1", "B2", 'B3', 'B4']
-# divisionC = ["C1", "C2", 'C3', 'C4']
-# divisionD = ["D1", "D2", 'D3', 'D4']
+divisionA = ["A1", "A2", 'A3', 'A4']
+divisionB = ["B1", "B2", 'B3', 'B4']
+divisionC = ["C1", "C2", 'C3', 'C4']
+divisionD = ["D1", "D2", 'D3', 'D4']
 
-divisionA = ["A1", "A2"]
-divisionB = ["B1", "B2"]
-divisionC = ["C1", "C2"]
-divisionD = ["D1", "D2"]
+# divisionA = ["A1", "A2"]
+# divisionB = ["B1", "B2"]
+# divisionC = ["C1", "C2"]
+# divisionD = ["D1", "D2"]
 
 divisions = [divisionA, divisionB, divisionC, divisionD]
 conferences = [[divisionA, divisionB], [divisionC, divisionD]]
@@ -39,6 +39,31 @@ for rnd in schedule.index:
 
         df.to_csv('../database/' + league_name + '/Rolls/Round_' + str(rnd) + '/' + schedule.loc[rnd, game] + '.csv')
         df.to_csv('../database/' + league_name + '/Rolls/Round_' + str(rnd) + '/' + schedule.loc[rnd, game] + '.csv')
+
+
+## Load data
+leagues = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/'+league_name+'/Leagues.csv', index_col=0)
+conferences = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/'+league_name+'/Conferences.csv', index_col=0)
+divisions = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/'+league_name+'/Divisions.csv', index_col=0)
+teams = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/'+league_name+'/Teams.csv', index_col=0)
+schedule = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/'+league_name+'/Schedule.csv', index_col=0)
+players_df = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/'+league_name+'/Players.csv')
+rolls = bg.load_team_rolls('E:\\Projects\\Github\\bracket_generator\\database/'+league_name+'/Rolls/')
+# Process data
+players = bg.assign_players(players_df, teams)
+scoring_lookup = bg.assign_scoring_lookup(teams, players)
+# Compute results and stats
+results, detailed_results, players_detailed_statistics = bg.get_detailed_stats_and_results(schedule, rolls,
+                                                                                           scoring_lookup,
+                                                                                           players, teams,
+                                                                                           import_results=False)
+players_statistics = bg.analyse_player_stats(players_detailed_statistics, players)
+players_standings = bg.compute_players_standings(players_statistics)
+
+
+#TODO: Make a function
+results.to_csv('E:\\Projects\\Github\\bracket_generator\\database\\'+league_name+'/Results.csv', index=False)
+players_standings.to_csv('E:\\Projects\\Github\\bracket_generator\\database\\'+league_name+'/Players_Standings.csv', encoding='utf-8-sig')
 
 # from sympy.utilities.iterables import multiset_combinations
 #

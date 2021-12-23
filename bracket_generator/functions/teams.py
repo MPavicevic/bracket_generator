@@ -97,7 +97,7 @@ def match_results(home, away, home_rolls, away_rolls, home_offence, home_defense
     return {home: home_team, away: away_team}
 
 
-def round_results(matches, LTI_df, home_rolls=None, away_rolls=None):
+def round_results(matches, LTI_df, teams, home_rolls=None, away_rolls=None):
     results = {}
     for match in matches:
         if (home_rolls is None) and (away_rolls is None):
@@ -142,7 +142,7 @@ def get_players_scores(scoring_lookup, rolls, modifier=None):
 
 def get_player_stats(players_scores, players):
     players_stats = pd.DataFrame(0, index=players.loc[:, 'Player'],
-                                 columns=['PTS', 'FGA', 'ORB', 'DRB', 'AST'])
+                                 columns=['PTS', 'FGA', 'ORB', 'DRB', 'AST', 'STL', 'BLK'])
     for i in players_scores.index:
         players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS'] = \
             players_scores.loc[i, 'Points1'] + players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS']
@@ -160,6 +160,10 @@ def get_player_stats(players_scores, players):
             players_scores.loc[i, 'Assists1'] + players_stats.loc[players_scores.loc[i, 'AS_Player1'], 'AST']
         players_stats.loc[players_scores.loc[i, 'AS_Player2'], 'AST'] = \
             players_scores.loc[i, 'Assists2'] + players_stats.loc[players_scores.loc[i, 'AS_Player2'], 'AST']
+        players_stats.loc[players_scores.loc[i, 'ST_Player'], 'STL'] = \
+            players_scores.loc[i, 'Steals'] + players_stats.loc[players_scores.loc[i, 'ST_Player'], 'STL']
+        players_stats.loc[players_scores.loc[i, 'BK_Player'], 'BLK'] = \
+            players_scores.loc[i, 'Blocks'] + players_stats.loc[players_scores.loc[i, 'BK_Player'], 'BLK']
         if (players_scores.loc[i, 'MOD'] == 1) or (players_scores.loc[i, 'MOD'] == 2):
             players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS'] = \
                 players_stats.loc[players_scores.loc[i, 'FG_Player1'], 'PTS'] + players_scores.loc[i, 'MOD']
@@ -210,11 +214,12 @@ def assign_players(players_df, teams):
     return players
 
 
-def assign_random_lookup_stats(off_rbs, def_rbs, fga1, fga2):
+def assign_random_lookup_stats(off_rbs, def_rbs, fga1, fga2, stl, blk):
     df = pd.DataFrame(
         {'roll1': roll1, 'roll2': roll2, 'Points1': 0, 'FGA1': 0, 'Points2': 0, 'FGA2': 0,
          'Rebounds1': 0, 'Rebounds2': 0,
-         'Assists1': 0, 'Assists2': 0})
+         'Assists1': 0, 'Assists2': 0,
+         'Steals': 0, 'Blocks': 0})
     for i in range(0, 36):
         fgs = randNums(2, 0, 12, df.loc[i, :].sum())
         df.loc[i, 'Points1'] = min(fgs[0], fgs[1])
@@ -226,9 +231,13 @@ def assign_random_lookup_stats(off_rbs, def_rbs, fga1, fga2):
     rbs_22 = randNums(6, 10, 20, def_rbs)
     fga_11 = randNums(6, 5, 12, fga1)
     fga_22 = randNums(6, 0, 5, fga2)
+    stl_11 = randNums(6, 1, 4, stl)
+    blk_11 = randNums(6, 2, 5, blk)
     for i in range(0, 6):
         rbs_1 = randNums(6, 0, 3, rbs_11[i])
         rbs_2 = randNums(6, 1, 4, rbs_22[i])
+        stl_1 = randNums(6, 0, 1, stl_11[i])
+        blk_1 = randNums(6, 0, 1, blk_11[i])
         if fga_11[i] != 0:
             fga_1 = randNums(6, 0, 3, fga_11[i])
         else:
@@ -242,6 +251,8 @@ def assign_random_lookup_stats(off_rbs, def_rbs, fga1, fga2):
             df.loc[k, 'Rebounds2'] = max(rbs_2[j], rbs_2[j])
             df.loc[k, 'FGA1'] = df.loc[k, 'Points1'] + fga_1[j]
             df.loc[k, 'FGA2'] = df.loc[k, 'Points2'] + fga_2[j]
+            df.loc[k, 'Steals'] = stl_1[j]
+            df.loc[k, 'Blocks'] = blk_1[j]
             k = k + 1
     return df.astype(int)
 
@@ -250,7 +261,8 @@ def get_scoring_lookup(lookup_stats, players):
     column_names = ['Roll1', 'Roll2',
                     'FG_Player1', 'Points1', 'FGA1', 'FG_Player2', 'Points2', 'FGA2',
                     'RB_Player1', 'Rebounds1', 'RB_Player2', 'Rebounds2',
-                    'AS_Player1', 'Assists1', 'AS_Player2', 'Assists2']
+                    'AS_Player1', 'Assists1', 'AS_Player2', 'Assists2',
+                    'ST_Player', 'Steals', 'BK_Player', 'Blocks']
     scoring_lookup = pd.DataFrame(columns=column_names)
     scoring_lookup.loc[:, 'Roll1'] = roll1
     scoring_lookup.loc[:, 'Roll2'] = roll2
@@ -262,8 +274,10 @@ def get_scoring_lookup(lookup_stats, players):
     scoring_lookup.loc[:, 'Rebounds2'] = lookup_stats.loc[:, 'Rebounds2']
     scoring_lookup.loc[:, 'Assists1'] = lookup_stats.loc[:, 'Assists1']
     scoring_lookup.loc[:, 'Assists2'] = lookup_stats.loc[:, 'Assists2']
-    for col in ['FG_Player1', 'RB_Player1', 'AS_Player1']:
-        for c in ['Points1', 'Rebounds1', 'Assists1']:
+    scoring_lookup.loc[:, 'Steals'] = lookup_stats.loc[:, 'Steals']
+    scoring_lookup.loc[:, 'Blocks'] = lookup_stats.loc[:, 'Blocks']
+    for col in ['FG_Player1', 'RB_Player1', 'AS_Player1', 'ST_Player', 'BK_Player']:
+        for c in ['Points1', 'Rebounds1', 'Assists1', 'Steals', 'Blocks']:
             tmp = players.sample(n=36, weights=c, random_state=1, replace=True)
             tmp.reset_index(inplace=True)
         for r in tmp.index:
@@ -288,7 +302,9 @@ def assign_scoring_lookup(teams, players):
         a[i] = assign_random_lookup_stats(off_rbs=40 + round(teams.loc[i, 'offense'] / 4),
                                           def_rbs=80 - round(teams.loc[i, 'defence'] / 2),
                                           fga1=50 - round(teams.loc[i, 'offense'] / 4),
-                                          fga2=20 - round(teams.loc[i, 'offense'] / 5))
+                                          fga2=20 - round(teams.loc[i, 'offense'] / 5),
+                                          stl=15 + round(teams.loc[i, 'offense'] / 6),
+                                          blk=20 - round(teams.loc[i, 'defence'] / 6))
         df[i] = get_scoring_lookup(a[i], players[i])
     return df
 
@@ -311,106 +327,124 @@ def load_team_rolls(path):
     return rolls
 
 
-## Load data
-leagues = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Leagues.csv', index_col=0)
-conferences = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Conferences.csv', index_col=0)
-divisions = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Divisions.csv', index_col=0)
-teams = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Teams.csv', index_col=0)
-schedule = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Schedule.csv', index_col=0)
-players_df = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/Test/Players.csv')
-rolls = load_team_rolls('E:\\Projects\\Github\\bracket_generator\\database/Test/Rolls/')
-# Process data
-players = assign_players(players_df, teams)
-scoring_lookup = assign_scoring_lookup(teams, players)
+def get_detailed_stats_and_results(schedule, rolls, scoring_lookup, players, teams, import_results=False):
+    # import_results = False
+    matches = {}
+    detailed_results = {}
+    headers = ['Round', 'Home Team', 'Away Team', 'Home F/T Points', 'Away F/T Points', 'Home H/T Points',
+               'Away H/T Points', 'OT']
+    results = pd.DataFrame(columns=headers)
+    players_detailed_statistics = {}
+    cntr = 0
+    for i in schedule.index:
+        matches[i] = []
+        detailed_results[i] = {}
+        for j in schedule.columns:
+            cntr = cntr + 1
+            detailed_results[i][int(j)] = {}
+            temp = iter(schedule.loc[i, j].split(" .vs "))
+            res = [(ele, next(temp)) for ele in temp]
+            matches[i].append(res)
+            if import_results is True:
+                home_rolls = tuple(rolls[i][schedule.loc[i, j]][res[0][0]].itertuples(index=False, name=None))
+                away_rolls = tuple(rolls[i][schedule.loc[i, j]][res[0][1]].itertuples(index=False, name=None))
+                detailed_results[i][int(j)] = round_results(matches[i][int(j)], LTI_df, teams, home_rolls, away_rolls)
+            else:
+                detailed_results[i][int(j)] = round_results(matches[i][int(j)], LTI_df, teams)
+            results.loc[cntr, 'Round'] = i + 1
+            results.loc[cntr, 'Home Team'] = res[0][0]
+            results.loc[cntr, 'Away Team'] = res[0][1]
+            results.loc[cntr, 'Home F/T Points'] = detailed_results[i][int(j)][str(res[0])][res[0][0]]['Score'].iat[-1]
+            results.loc[cntr, 'Away F/T Points'] = detailed_results[i][int(j)][str(res[0])][res[0][1]]['Score'].iat[-1]
+            results.loc[cntr, 'Home H/T Points'] = detailed_results[i][int(j)][str(res[0])][res[0][0]]['Score'].iat[5]
+            results.loc[cntr, 'Away H/T Points'] = detailed_results[i][int(j)][str(res[0])][res[0][1]]['Score'].iat[5]
+            if detailed_results[i][int(j)][str(res[0])][res[0][0]]['Score'].iat[11] == \
+                    detailed_results[i][int(j)][str(res[0])][res[0][1]]['Score'].iat[11]:
+                results.loc[cntr, 'OT'] = 'Yes'
+            if i == 0:
+                players_detailed_statistics[res[0][0]] = {}
+                players_detailed_statistics[res[0][1]] = {}
+
+            home_scores = \
+                get_players_scores(scoring_lookup[res[0][0]],
+                                   tuple(detailed_results[i][int(j)][str(res[0])][res[0][0]].loc[:,
+                                         ['Roll1', 'Roll2']].itertuples(index=False, name=None)),
+                                   modifier=list(detailed_results[i][int(j)][str(res[0])][res[0][0]]['Modifier']))
+            away_scores = \
+                get_players_scores(scoring_lookup[res[0][1]],
+                                   tuple(detailed_results[i][int(j)][str(res[0])][res[0][1]].loc[:,
+                                         ['Roll1', 'Roll2']].itertuples(index=False, name=None)),
+                                   modifier=list(detailed_results[i][int(j)][str(res[0])][res[0][1]]['Modifier']))
+            players_detailed_statistics[res[0][0]][i] = get_player_stats(home_scores, players[res[0][0]])
+            players_detailed_statistics[res[0][1]][i] = get_player_stats(away_scores, players[res[0][1]])
+
+    results[['Home F/T Points', 'Away F/T Points', 'Home H/T Points', 'Away H/T Points']] = results[
+        ['Home F/T Points', 'Away F/T Points', 'Home H/T Points', 'Away H/T Points']].astype(int)
+
+    return results, detailed_results, players_detailed_statistics
 
 
-#TODO: Make a function
-import_results = False
-matches = {}
-detailed_results = {}
-headers = ['Round', 'Home Team', 'Away Team', 'Home F/T Points', 'Away F/T Points', 'Home H/T Points',
-           'Away H/T Points', 'OT']
-results = pd.DataFrame(columns=headers)
-players_detailed_statistics = {}
-cntr = 0
-for i in schedule.index:
-    matches[i] = []
-    detailed_results[i] = {}
-    for j in schedule.columns:
-        cntr = cntr + 1
-        detailed_results[i][int(j)] = {}
-        temp = iter(schedule.loc[i, j].split(" .vs "))
-        res = [(ele, next(temp)) for ele in temp]
-        matches[i].append(res)
-        home_rolls = tuple(rolls[i][schedule.loc[i, j]][res[0][0]].itertuples(index=False, name=None))
-        away_rolls = tuple(rolls[i][schedule.loc[i, j]][res[0][1]].itertuples(index=False, name=None))
-        if import_results is True:
-            detailed_results[i][int(j)] = round_results(matches[i][int(j)], LTI_df, home_rolls, away_rolls)
-        else:
-            detailed_results[i][int(j)] = round_results(matches[i][int(j)], LTI_df)
-        results.loc[cntr, 'Round'] = i + 1
-        results.loc[cntr, 'Home Team'] = res[0][0]
-        results.loc[cntr, 'Away Team'] = res[0][1]
-        results.loc[cntr, 'Home F/T Points'] = detailed_results[i][int(j)][str(res[0])][res[0][0]]['Score'].iat[-1]
-        results.loc[cntr, 'Away F/T Points'] = detailed_results[i][int(j)][str(res[0])][res[0][1]]['Score'].iat[-1]
-        results.loc[cntr, 'Home H/T Points'] = detailed_results[i][int(j)][str(res[0])][res[0][0]]['Score'].iat[5]
-        results.loc[cntr, 'Away H/T Points'] = detailed_results[i][int(j)][str(res[0])][res[0][1]]['Score'].iat[5]
-        if detailed_results[i][int(j)][str(res[0])][res[0][0]]['Score'].iat[11] == \
-                detailed_results[i][int(j)][str(res[0])][res[0][1]]['Score'].iat[11]:
-            results.loc[cntr, 'OT'] = 'Yes'
-        if i == 0:
-            players_detailed_statistics[res[0][0]] = {}
-            players_detailed_statistics[res[0][1]] = {}
+def analyse_player_stats(players_detailed_statistics, players):
+    # TODO: find a better way to recompute FG% from PTS and FGA
+    players_statistics = {}
+    cols = ['Position', 'PTS', 'FGA', 'FG%', 'ORB', 'DRB', 'TRB', 'AST', 'STL', 'BLK', 'PTS/G', 'TRB/G', 'AST/G',
+            'STL/G', 'BLK/G']
+    for i in players_detailed_statistics:
+        for j in players_detailed_statistics[i]:
+            if j == 0:
+                players_statistics[i] = players_detailed_statistics[i][j]
+            else:
+                players_statistics[i] = players_statistics[i].add(players_detailed_statistics[i][j])
+            for k in players_detailed_statistics[i][j].index:
+                players_statistics[i].loc[k, 'Position'] = players[i].loc[players[i]['Player'] == k, 'Position'].values
+        players_statistics[i].loc[:, 'TRB'] = players_statistics[i].loc[:, 'ORB'] + players_statistics[i].loc[:, 'DRB']
+        players_statistics[i].loc[:, 'FG%'] = players_statistics[i].loc[:, 'PTS'] / 2 / \
+                                              players_statistics[i].loc[:, 'FGA']
+        players_statistics[i].loc[:, 'PTS/G'] = players_statistics[i].loc[:, 'PTS'] / (j + 1)
+        players_statistics[i].loc[:, 'TRB/G'] = players_statistics[i].loc[:, 'TRB'] / (j + 1)
+        players_statistics[i].loc[:, 'AST/G'] = players_statistics[i].loc[:, 'AST'] / (j + 1)
+        players_statistics[i].loc[:, 'STL/G'] = players_statistics[i].loc[:, 'STL'] / (j + 1)
+        players_statistics[i].loc[:, 'BLK/G'] = players_statistics[i].loc[:, 'BLK'] / (j + 1)
 
-        home_scores = \
-            get_players_scores(scoring_lookup[res[0][0]],
-                               tuple(detailed_results[i][int(j)][str(res[0])][res[0][0]].loc[:,
-                                     ['Roll1', 'Roll2']].itertuples(index=False, name=None)),
-                               modifier=list(detailed_results[i][int(j)][str(res[0])][res[0][0]]['Modifier']))
-        away_scores = \
-            get_players_scores(scoring_lookup[res[0][1]],
-                               tuple(detailed_results[i][int(j)][str(res[0])][res[0][1]].loc[:,
-                                     ['Roll1', 'Roll2']].itertuples(index=False, name=None)),
-                               modifier=list(detailed_results[i][int(j)][str(res[0])][res[0][1]]['Modifier']))
-        players_detailed_statistics[res[0][0]][i] = get_player_stats(home_scores, players[res[0][0]])
-        players_detailed_statistics[res[0][1]][i] = get_player_stats(away_scores, players[res[0][1]])
-
-results[['Home F/T Points', 'Away F/T Points', 'Home H/T Points', 'Away H/T Points']] = results[
-    ['Home F/T Points', 'Away F/T Points', 'Home H/T Points', 'Away H/T Points']].astype(int)
-
-#TODO: Make a function
-players_statistics = {}
-cols = ['Position', 'PTS', 'FGA', 'FG%', 'ORB', 'DRB', 'TRB', 'AST','PTS/G','TRB/G','AST/G']
-for i in players_detailed_statistics:
-    for j in players_detailed_statistics[i]:
-        if j == 0:
-            players_statistics[i] = players_detailed_statistics[i][j]
-        else:
-            players_statistics[i] = players_statistics[i].add(players_detailed_statistics[i][j])
-        for k in players_detailed_statistics[i][j].index:
-            players_statistics[i].loc[k,'Position'] = players[i].loc[players[i]['Player'] == k, 'Position'].values
-    players_statistics[i].loc[:, 'TRB'] = players_statistics[i].loc[:, 'ORB'] + players_statistics[i].loc[:, 'DRB']
-    players_statistics[i].loc[:, 'FG%'] = players_statistics[i].loc[:, 'PTS'] / 2 / players_statistics[i].loc[:, 'FGA']
-    players_statistics[i].loc[:, 'PTS/G'] = players_statistics[i].loc[:, 'PTS'] / (j+1)
-    players_statistics[i].loc[:, 'TRB/G'] = players_statistics[i].loc[:, 'TRB'] / (j + 1)
-    players_statistics[i].loc[:, 'AST/G'] = players_statistics[i].loc[:, 'AST'] / (j + 1)
-
-    # players_statistics[i].loc[:, 'Team'] = i
-    players_statistics[i] = players_statistics[i][cols]
-    decimals = 2
-    for c in ['PTS/G', 'TRB/G', 'AST/G']:
-        players_statistics[i][c] = players_statistics[i][c].apply(lambda x: round(x, decimals))
-
-#TODO: Make a function
-players_standings = pd.concat(players_statistics, axis=0)
-players_standings = players_standings.sort_values(by=['PTS', 'FG%', 'TRB', 'AST'], ascending=False)
+        # players_statistics[i].loc[:, 'Team'] = i
+        players_statistics[i] = players_statistics[i][cols]
+        decimals = 2
+        for c in ['PTS/G', 'TRB/G', 'AST/G', 'STL/G', 'BLK/G']:
+            players_statistics[i][c] = players_statistics[i][c].apply(lambda x: round(x, decimals))
+    return players_statistics
 
 
-#TODO: Make a function
-results.to_csv('E:\\Projects\\Github\\bracket_generator\\database\\Test/Results.csv', index=False)
+def compute_players_standings(players_statistics):
+    players_standings = pd.concat(players_statistics, axis=0)
+    players_standings = players_standings.sort_values(by=['PTS', 'FG%', 'TRB', 'AST'], ascending=False)
+    return players_standings
 
-#TODO: Check if this test is needed
-for i in teams.index:
-    tmp = players_statistics[i].sum()
-    print('Team ' + i + ' AS: ' + str(round(tmp['AST'] / 11, 1)) + ' RB_OFF: ' + str(
-        round(tmp['ORB'] / 11, 1)) + ' RB_DEF: ' + str(round(tmp['DRB'] / 11, 1)))
+# league_name = 'Test1'
+# ## Load data
+# leagues = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/'+league_name+'/Leagues.csv', index_col=0)
+# conferences = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/'+league_name+'/Conferences.csv', index_col=0)
+# divisions = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/'+league_name+'/Divisions.csv', index_col=0)
+# teams = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/'+league_name+'/Teams.csv', index_col=0)
+# schedule = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/'+league_name+'/Schedule.csv', index_col=0)
+# players_df = pd.read_csv('E:\\Projects\\Github\\bracket_generator\\database/'+league_name+'/Players.csv')
+# rolls = load_team_rolls('E:\\Projects\\Github\\bracket_generator\\database/'+league_name+'/Rolls/')
+# # Process data
+# players = assign_players(players_df, teams)
+# scoring_lookup = assign_scoring_lookup(teams, players)
+# # Compute results and stats
+# results, detailed_results, players_detailed_statistics = get_detailed_stats_and_results(schedule, rolls,
+#                                                                                         scoring_lookup,
+#                                                                                         players, import_results=False)
+# players_statistics = analyse_player_stats(players_detailed_statistics, players)
+# players_standings = compute_players_standings(players_statistics)
+#
+#
+# #TODO: Make a function
+# results.to_csv('E:\\Projects\\Github\\bracket_generator\\database\\'+league_name+'/Results.csv', index=False)
+# players_standings.to_csv('E:\\Projects\\Github\\bracket_generator\\database\\'+league_name+'/Players_Standings.csv', encoding='utf-8-sig')
+
+# #TODO: Check if this test is needed
+# for i in teams.index:
+#     tmp = players_statistics[i].sum()
+#     print('Team ' + i + ' AS: ' + str(round(tmp['AST'] / 11, 1)) + ' RB_OFF: ' + str(
+#         round(tmp['ORB'] / 11, 1)) + ' RB_DEF: ' + str(round(tmp['DRB'] / 11, 1)))
